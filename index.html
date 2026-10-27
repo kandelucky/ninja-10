@@ -305,9 +305,9 @@
 <body class="h-full m-0 bg-base-100 text-base-content">
   <main id="app" class="h-full max-w-3xl mx-auto">
 
-    <!-- home: two topics, „within 10" and „within 20" (10 + a digit and back, Lasha 2026-10-26). The topic button plays
-         the story by itself only the first time (S.story / S.storyTen); after that each opens its own menu („within 20"
-         got one with „Przez 10", Lasha 2026-10-26). No „?" here any more: each drill has its own in the menus (Lasha
+    <!-- home: two topics, „within 10" and „within 20" (10 + a digit and back, Lasha 2026-10-26). The topic button opens
+         its own menu („within 20" got one with „Przez 10", Lasha 2026-10-26); a story plays only by a drill's „?"
+         (Lasha 2026-10-27). No „?" here any more: each drill has its own in the menus (Lasha
          2026-10-26: „on home it is too much") -->
     <section id="home" class="h-full flex-col p-5 gap-6">
       <div class="flex justify-end">
@@ -1324,14 +1324,13 @@
   // the ninja existed still loads — it just shows the pick screen once.
   var NINJAS = ["boy", "girl"];
 
-  // S.story = the story has already played by itself once (it does so only the first time). S.best keys:
+  // S.best keys:
   // "1" = addition (the key it had before the menu existed), "1s" = subtraction, "1m" = both mixed,
   // "p10" = plain + and − up to 10, "l10" = the long chains („5 − 1 + 2"), "r10" = „1 + 2 ◯ 7 − 2" → < = >,
   // "e10" = the exam (all six together, 24 cards; the only one the server gets),
   // "a10" = „within 20" (10 + a digit and back), "x20" = „Przez 10" (7 + 8), "y20" = its subtraction (15 − 7), "z20" = the
   // two mixed, no hints — the server gets their sum („c20"), "e20" = „within 20"'s exam (all three together, 24 cards; on the server too),
-  // "s20" = the helper „13 − 5 = 13 − 3 − ▢" (local only, not in the sum). S.storyTen = its story has played by
-  // itself once. The twins (local records only, not on the server): "t20" = + and − within 20 mixed, "t50" = + within
+  // "s20" = the helper „13 − 5 = 13 − 3 − ▢" (local only, not in the sum). The twins (local records only, not on the server): "t20" = + and − within 20 mixed, "t50" = + within
   // 50, "t50s" = − within 50.
   // Top 10: S.uid = this child's secret id (32 hex, made once on this device, never shown) — the server knows the
   // child by it, not by the name. S.name = what the list shows. S.sent = the last payload the server accepted,
@@ -1343,8 +1342,8 @@
   // and right since the last miss, d: the last such day }. Local only, not on the server
   // S.themeV = 1: S.theme was picked after dojo came (2026-10-27). A save without it (any theme picked before) is
   // ignored once, so every child lands on dojo (Lasha 2026-10-27: „everyone should have dojo"); a pick after that stays
-  var S = { lang: "pl", best: {}, sound: true, hints: true, hintOff: {}, theme: null, themeV: 1, ninja: null, story: false,
-            storyTen: false, uid: null, name: "", sent: "", hard: {} };
+  var S = { lang: "pl", best: {}, sound: true, hints: true, hintOff: {}, theme: null, themeV: 1, ninja: null,
+            uid: null, name: "", sent: "", hard: {} };
   function load() {
     try {
       var d = JSON.parse(localStorage.getItem(SAVE_KEY));
@@ -1352,9 +1351,6 @@
       if (d && /^[0-9a-f]{32}$/.test(d.uid)) S.uid = d.uid;
       if (d && typeof d.name === "string") S.name = cleanName(d.name);
       if (d && typeof d.sent === "string") S.sent = d.sent;
-      // a save from before the flag that already has a record has seen the story
-      if (d && (d.story === true || (d.best && d.best[1]))) S.story = true;
-      if (d && d.storyTen === true) S.storyTen = true;
       if (d && d.best) S.best = d.best;
       if (d && typeof d.sound === "boolean") S.sound = d.sound;
       if (d && typeof d.hints === "boolean") S.hints = d.hints;
@@ -1839,23 +1835,15 @@
   var storyFrom = "home";
   function storyUp() { if (storyFrom === "menu") goMenu(); else if (storyFrom === "menu20") goMenu20(); else goHome(); }
   function openStory() { storyFrom = current; show("intro"); log("story"); }
-  // „within 10": the very first tap plays the story by itself; every later tap goes straight to the menu
-  $("r1").onclick = function () {
-    if (S.story) { goMenu(); return; }
-    S.story = true; save(); log("first time: the story opens by itself");
-    openStory();
-  };
+  // „within 10" / „within 20" open their menus; a story plays only by its drill's „?" (Lasha 2026-10-27: it used to
+  // play by itself on the first tap — „the tutorial must open only on its own button")
+  $("r1").onclick = goMenu;
   MENU.concat(MENU20, MENU_TW, MENU100, MENU1000).forEach(function (m) { $(mId(m)).onclick = function () { drillStart(m); }; });
   $("r3").onclick = goMenuTw;
   $("r4").onclick = goMenu100;
   $("r5").onclick = goMenu1000;
   $("toHard").onclick = function () { drillStart("hard"); };
-  // „within 20": the first tap plays its story by itself (it ends in „10 + cyfra"), every later tap opens its menu
-  $("r2").onclick = function () {
-    if (S.storyTen) { goMenu20(); return; }
-    S.storyTen = true; save(); log("within 20, first time: the story opens by itself");
-    openTen();
-  };
+  $("r2").onclick = goMenu20;
   $("introGo").onclick = function () { seeI = 0; seeShow(); show("see"); };
   function openSet() { $("setName").value = S.name; show("set"); }
   $("toSet").onclick = openSet;
@@ -1863,7 +1851,7 @@
   $("homeName").onclick = function () { openSet(); $("setName").focus(); $("setName").select(); };
 
   /* ---------- start over (⚙️) ---------- */
-  // Wipes the whole save and reloads: the app opens as on its very first launch (pick → name → story, theme
+  // Wipes the whole save and reloads: the app opens as on its very first launch (pick → name, theme
   // DEFAULT_THEME, sound on) with a new uid. The old uid's records stay on the server (Lasha 2026-10-25, „A").
   var wiped = false;
   $("resetGo").onclick = function () { $("resetAsk").showModal(); };
